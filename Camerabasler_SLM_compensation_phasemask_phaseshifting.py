@@ -45,30 +45,9 @@ laser_wavelength_nm = 532.0
 # ###########################
 
 # create folders to save data
-today = datetime.now()
-data_day_dir = os.path.join(data_path, today.strftime('%Y_%m_%d'))
-data_measure_dir = os.path.join(data_day_dir, data_type_measure)
-# Make folder for the day
-if not os.path.exists(data_day_dir):
-    print("Making folder for the day", data_day_dir)
-    os.makedirs(data_day_dir)
-# Make folder for the type of measure
-if not os.path.exists(data_measure_dir):
-    print("Making folder for the type of measure", data_measure_dir)
-    os.makedirs(data_measure_dir)
-# Make folder for the run
-for ii in range(1, 9999):
-    data_dir = os.path.join(data_measure_dir + f"/M{ii:05d}")
-    if not os.path.exists(data_dir):
-        print("Making folder for the current run", data_dir)
-        os.mkdir(data_dir)
-        break
-# Set the folders where you save images and np arrays
-image_save_dir = os.path.join(data_dir, "images")
-pfile_save_dir = os.path.join(data_dir, "files")
-# Make folders
-os.mkdir(image_save_dir)
-os.mkdir(pfile_save_dir)
+# should be here
+# but I will move it later
+# at the moment, it's at the bottom of the file
 
 
 # %% FUNCTION
@@ -132,11 +111,16 @@ dataHeight = slm.height_px
 # dataWidth = 100
 # dataHeight = 60
 
-# blank screen (phase=0)
-phaseIn = np.zeros((dataHeight, dataWidth))
-plt.imshow(phaseIn)
+# Reference blank screen
+phaseIn_reference = np.zeros((dataHeight, dataWidth))
 
-# divide screen vertical
+# blank screen (phase=0)
+# mask_type = "input_mask_blank_screen"
+# phaseIn = np.zeros((dataHeight, dataWidth))
+# plt.imshow(phaseIn)
+
+# # divide screen vertical
+# mask_type = "input_mask_vertical_division"
 # phaseA=0
 # phaseB=np.pi
 # screenDivider = 0.5
@@ -147,17 +131,19 @@ plt.imshow(phaseIn)
 # plt.imshow(phaseIn)
 
 
-# #divide screen horizontal
-# phaseA=0
-# phaseB=np.pi
-# screenDivider = 0.5
-# phaseIn=np.zeros((dataHeight,dataWidth))
-# screenElement=np.int32(np.floor(dataHeight*screenDivider))
-# phaseIn[0:screenElement, :]=phaseA
-# phaseIn[screenElement+1:dataHeight,:]=phaseB
-# plt.imshow(phaseIn)
+# divide screen horizontal
+mask_type = "input_mask_horizontal_division"
+phaseA=0
+phaseB=np.pi
+screenDivider = 0.5
+phaseIn=np.zeros((dataHeight,dataWidth))
+screenElement=np.int32(np.floor(dataHeight*screenDivider))
+phaseIn[0:screenElement, :]=phaseA
+phaseIn[screenElement+1:dataHeight,:]=phaseB
+plt.imshow(phaseIn)
 
 # #checkerboard (define square single field size (px) of checkerboard with respect to slm width, checkerboard centered in the slm screen )
+# mask_type = "input_mask_checkboard_1"
 # nsingleV=1 ##number of fields single type, vertical direction
 # nsingleH=2 ##number of fields single type, horizontal direction
 # # n=nsingleV*2 #number of fields both type
@@ -171,8 +157,9 @@ plt.imshow(phaseIn)
 # phaseIn= a_incenter_b(phaseB*Mceckerboard,phaseIn_0)
 # plt.imshow(phaseIn)
 
+# ######################
 # %% CAMERA ACQUISITIONS OVER A SERIES OF UNIFORM PHASE SHIFTS
-
+# ######################
 # phase shifts
 Nshifts = 9
 phaseshift = np.linspace(0, 2 * np.pi, num=Nshifts)
@@ -181,14 +168,24 @@ phaseshift = np.linspace(0, 2 * np.pi, num=Nshifts)
 frameWidth = 1920
 frameHeight = 1200
 Mframes = np.zeros((frameHeight, frameWidth, Nshifts), dtype=np.uint8)
-
-
-# fig1, ax=plt.subplots(1,1)
+Mframes_reference = np.zeros((frameHeight, frameWidth, Nshifts), dtype=np.uint8)
 
 for i in range(Nshifts):
-    phaseData = slmdisplaysdk.createFieldSingle(dataWidth, dataHeight) + phaseIn + phaseshift[i]
-    print(phaseshift[i])
+    print("Phase shift:", f"{phaseshift[i]:.4f}")
 
+    # Code for the reference
+    print("  Taking shot for reference")
+    phaseData = slmdisplaysdk.createFieldSingle(dataWidth, dataHeight) + phaseIn_reference + phaseshift[i]
+    # error = slm.wavefrontcompensationLoad(phaseData, laser_wavelength_nm, slmdisplaysdk.WavefrontcompensationFlags.NoFlag, 0, 0)
+    # assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
+    error = slm.showPhasevalues(phaseData)  # display phase values on the SLM
+    assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
+    result = camera.GrabOne(100)  # grab frame file on the camera
+    Mframes_reference[:, :, i] = result.Array  # extract numerical matrix and build 3D frame matrix
+
+    # Code for the phaseIn selected
+    print("  Taking shot for", mask_type)
+    phaseData = slmdisplaysdk.createFieldSingle(dataWidth, dataHeight) + phaseIn + phaseshift[i]
     # error = slm.wavefrontcompensationLoad(phaseData, laser_wavelength_nm, slmdisplaysdk.WavefrontcompensationFlags.NoFlag, 0, 0)
     # assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
     error = slm.showPhasevalues(phaseData)  # display phase values on the SLM
@@ -196,12 +193,46 @@ for i in range(Nshifts):
     result = camera.GrabOne(100)  # grab frame file on the camera
     Mframes[:, :, i] = result.Array  # extract numerical matrix and build 3D frame matrix
 
+
 # %% CLOSE CAMERA AND SLM
 camera.Close()
 slm.close()
 
 
 # %% SHOWING AND SAVING IMAGES
+# Before saving, let's make the necessary folders
+# in order to remember the input mask this lines are at the bottom of the file
+today = datetime.now()
+data_day_dir = os.path.join(data_path, today.strftime('%Y_%m_%d'))
+data_measure_dir = os.path.join(data_day_dir, data_type_measure)
+mask_dir = os.path.join(data_measure_dir, mask_type)
+# Make folder for the day
+if not os.path.exists(data_day_dir):
+    print("Making folder for the day:", data_day_dir)
+    os.makedirs(data_day_dir)
+# Make folder for the type of measure
+if not os.path.exists(data_measure_dir):
+    print("Making folder for the type of measure:", data_measure_dir)
+    os.makedirs(data_measure_dir)
+# Make another for the input_mask
+if not os.path.exists(mask_dir):
+    print("Making folder for the input mask:", mask_dir)
+    os.makedirs(mask_dir)
+# Make folder for the run
+for ii in range(1, 9999):
+    data_dir = os.path.join(mask_dir + f"/M{ii:05d}")
+    if not os.path.exists(data_dir):
+        print("Making folder for the current run:", data_dir)
+        os.mkdir(data_dir)
+        break
+# Set the folders where you save images and np arrays
+image_save_dir = os.path.join(data_dir, "images")
+pfile_save_dir = os.path.join(data_dir, "files")
+# Make folders
+os.mkdir(image_save_dir)
+os.mkdir(pfile_save_dir)
+
+
 for i in range(Nshifts):
     fig1, ax = plt.subplots()
     img = ax.imshow(Mframes[:, :, i], 'viridis')
@@ -209,22 +240,39 @@ for i in range(Nshifts):
     ax.axis('off')
     #
     imagename = 'frame' + np.str(i) + '.png'
-    filepath = os.path.join(image_save_dir, imagename)
-    print("Saving:", filepath)
-    plt.savefig(filepath)
+    file_path = os.path.join(image_save_dir, imagename)
+    print("Saving:", file_path)
+    plt.savefig(file_path)
+
+for i in range(Nshifts):
+    fig1, ax = plt.subplots()
+    img = ax.imshow(Mframes_reference[:, :, i], 'viridis')
+    # plt.colorbar(img)
+    ax.axis('off')
+    #
+    imagename = 'frame' + np.str(i) + '_reference.png'
+    file_path = os.path.join(image_save_dir, imagename)
+    print("Saving:", file_path)
+    plt.savefig(file_path)
 
 # %% SAVIG FILES
 # save frames matrix
 file_path = os.path.join(pfile_save_dir, 'frames.npy')
 print("Saving:", file_path)
 np.save(file_path, Mframes)
+file_path = os.path.join(pfile_save_dir, 'frames_reference.npy')
+print("Saving:", file_path)
+np.save(file_path, Mframes_reference)
 
 # save input phase mask
 file_path = os.path.join(pfile_save_dir, 'phasein.npy')
 print("Saving:", file_path)
 np.save(file_path, phaseIn)
+file_path = os.path.join(pfile_save_dir, 'phasein_reference.npy')
+print("Saving:", file_path)
+np.save(file_path, phaseIn_reference)
 
-# save input phase mask
+# save input phase shift
 file_path = os.path.join(pfile_save_dir, 'phaseshifts.npy')
 print("Saving:", file_path)
 np.save(file_path, phaseshift)
