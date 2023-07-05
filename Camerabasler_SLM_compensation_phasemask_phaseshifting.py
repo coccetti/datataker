@@ -180,8 +180,8 @@ for i in range(Nshifts):
     # assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
     error = slm.showPhasevalues(phaseData)  # display phase values on the SLM
     assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
-    result = camera.GrabOne(100)  # grab frame file on the camera
-    Mframes_reference[:, :, i] = result.Array  # extract numerical matrix and build 3D frame matrix
+    result_reference = camera.GrabOne(100)  # grab frame file on the camera
+    Mframes_reference[:, :, i] = result_reference.Array  # extract numerical matrix and build 3D frame matrix
 
     # Code for the phaseIn selected
     print("  Taking shot for", mask_type)
