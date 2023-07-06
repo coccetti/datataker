@@ -99,6 +99,7 @@ assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
 # showSLMPreview(slm, scale=1.0)
 
 # %% LOAD SLM PHASE COMPENSATION FILE
+# Load and use the Correction Function file for the SLM
 wavefrontfile = (
     r'C:\Users\LFC_01\Documents\SLM_PLUTO_MATERIAL\Wavefront_Correction_Function\U.14-2040-182427-2X-00-05_7020-1 6010-1086.h5')
 error = slm.wavefrontcompensationLoad(wavefrontfile, laser_wavelength_nm,
@@ -119,28 +120,28 @@ phaseIn_reference = np.zeros((dataHeight, dataWidth))
 # phaseIn = np.zeros((dataHeight, dataWidth))
 # plt.imshow(phaseIn)
 
-# # divide screen vertical
-# mask_type = "input_mask_vertical_division"
-# phaseA=0
-# phaseB=np.pi
-# screenDivider = 0.5
-# phaseIn=np.zeros((dataHeight,dataWidth))
-# screenElement=np.int32(np.floor(dataWidth*screenDivider))
-# phaseIn[:,0:screenElement]=phaseA
-# phaseIn[:,screenElement+1:dataWidth]=phaseB
-# plt.imshow(phaseIn)
-
-
-# divide screen horizontal
-mask_type = "input_mask_horizontal_division"
+# divide screen vertical
+mask_type = "input_mask_vertical_division"
 phaseA=0
 phaseB=np.pi
 screenDivider = 0.5
 phaseIn=np.zeros((dataHeight,dataWidth))
-screenElement=np.int32(np.floor(dataHeight*screenDivider))
-phaseIn[0:screenElement, :]=phaseA
-phaseIn[screenElement+1:dataHeight,:]=phaseB
+screenElement=np.int32(np.floor(dataWidth*screenDivider))
+phaseIn[:,0:screenElement]=phaseA
+phaseIn[:,screenElement+1:dataWidth]=phaseB
 plt.imshow(phaseIn)
+
+
+# divide screen horizontal
+# mask_type = "input_mask_horizontal_division"
+# phaseA=0
+# phaseB=np.pi
+# screenDivider = 0.5
+# phaseIn=np.zeros((dataHeight,dataWidth))
+# screenElement=np.int32(np.floor(dataHeight*screenDivider))
+# phaseIn[0:screenElement, :]=phaseA
+# phaseIn[screenElement+1:dataHeight,:]=phaseB
+# plt.imshow(phaseIn)
 
 # #checkerboard (define square single field size (px) of checkerboard with respect to slm width, checkerboard centered in the slm screen )
 # mask_type = "input_mask_checkboard_1"
@@ -176,8 +177,6 @@ for i in range(Nshifts):
     # Code for the reference
     print("  Taking shot for reference")
     phaseData = slmdisplaysdk.createFieldSingle(dataWidth, dataHeight) + phaseIn_reference + phaseshift[i]
-    # error = slm.wavefrontcompensationLoad(phaseData, laser_wavelength_nm, slmdisplaysdk.WavefrontcompensationFlags.NoFlag, 0, 0)
-    # assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
     error = slm.showPhasevalues(phaseData)  # display phase values on the SLM
     assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
     result_reference = camera.GrabOne(100)  # grab frame file on the camera
@@ -186,8 +185,6 @@ for i in range(Nshifts):
     # Code for the phaseIn selected
     print("  Taking shot for", mask_type)
     phaseData = slmdisplaysdk.createFieldSingle(dataWidth, dataHeight) + phaseIn + phaseshift[i]
-    # error = slm.wavefrontcompensationLoad(phaseData, laser_wavelength_nm, slmdisplaysdk.WavefrontcompensationFlags.NoFlag, 0, 0)
-    # assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
     error = slm.showPhasevalues(phaseData)  # display phase values on the SLM
     assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
     result = camera.GrabOne(100)  # grab frame file on the camera
