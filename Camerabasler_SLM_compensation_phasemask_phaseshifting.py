@@ -5,14 +5,17 @@ Created on Fri Nov 25 15:08:28 2022
 @author: Romolo
 """
 # Standard imports
-import os
+# import os
 import numpy as np
-import matplotlib.pyplot as plt
-from datetime import datetime
+# import matplotlib.pyplot as plt
+# from datetime import datetime
+from phase_in_functions import blank_screen, vertical_division, horizontal_division
+from camera_functions import camera_shots
+from saving_functions import make_run_folder, save_measures
 
 # This import will work only after camera drivers are installed
-from pypylon import pylon
-from pypylon import genicam
+# from pypylon import pylon
+# from pypylon import genicam
 
 # import for SLM Display SDK
 # You need to copy the folder holoeye from "C:\Program Files\HOLOEYE Photonics\SLM Display SDK (Python) v3.0\"
@@ -44,39 +47,25 @@ laser_wavelength_nm = 532.0
 # End of variables definition
 # ###########################
 
-# create folders to save data
-# should be here
-# but I will move it later
-# at the moment, it's at the bottom of the file
+# Create the RUN number folder to save data
+# format is M00001, M00002, ...
+run_dir = make_run_folder(data_path, data_type_measure)
 
 
-# %% FUNCTION
-# placing matrix a in the center of matrix b
-def a_incenter_b(a, b):
-    db = b.shape
-    da = a.shape
-    lower_y = (db[0] // 2) - (da[0] // 2)
-    upper_y = (db[0] // 2) + (da[0] // 2)
-    lower_x = (db[1] // 2) - (da[1] // 2)
-    upper_x = (db[1] // 2) + (da[1] // 2)
-    b[lower_y:upper_y, lower_x:upper_x] = a
-    return b
-
-
-# %% CAMERA INITIALIZATION
-camera = pylon.InstantCamera(
-    pylon.TlFactory.GetInstance().CreateFirstDevice())
-
-camera.Open()
-
-# enable all chunks
-camera.ChunkModeActive = True
-
-for cf in camera.ChunkSelector.Symbolics:
-    camera.ChunkSelector = cf
-    camera.ChunkEnable = True
-
-camera.ExposureTime.SetValue(camera_exposure_time)  # ms
+# # %% CAMERA INITIALIZATION
+# camera = pylon.InstantCamera(
+#     pylon.TlFactory.GetInstance().CreateFirstDevice())
+#
+# camera.Open()
+#
+# # enable all chunks
+# camera.ChunkModeActive = True
+#
+# for cf in camera.ChunkSelector.Symbolics:
+#     camera.ChunkSelector = cf
+#     camera.ChunkEnable = True
+#
+# camera.ExposureTime.SetValue(camera_exposure_time)  # ms
 
 # %% SLM INITIALIZATION
 # Initializes the SLM library
@@ -107,169 +96,41 @@ error = slm.wavefrontcompensationLoad(wavefrontfile, laser_wavelength_nm,
 assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
 
 # %% INPUT PHASE MASK
-dataWidth = slm.width_px
-dataHeight = slm.height_px
-# dataWidth = 100
-# dataHeight = 60
+# Read from slm, we know dataHeight==1080
+slm_data_height = slm.height_px
+# Read from slm, we know dataWidth==1920
+slm_data_width = slm.width_px
 
-# Reference blank screen
-phaseIn_reference = np.zeros((dataHeight, dataWidth))
+# Create phase_in for the Reference blank screen
+phase_in_reference = np.zeros((slm_data_height, slm_data_width))
 
-# blank screen (phase=0)
-# mask_type = "input_mask_blank_screen"
-# phaseIn = np.zeros((dataHeight, dataWidth))
-# plt.imshow(phaseIn)
-
-# divide screen vertical
-mask_type = "input_mask_vertical_division"
-phaseA=0
-phaseB=np.pi
-screenDivider = 0.5
-phaseIn=np.zeros((dataHeight,dataWidth))
-screenElement=np.int32(np.floor(dataWidth*screenDivider))
-phaseIn[:,0:screenElement]=phaseA
-phaseIn[:,screenElement+1:dataWidth]=phaseB
-plt.imshow(phaseIn)
-
-
-# divide screen horizontal
-# mask_type = "input_mask_horizontal_division"
-# phaseA=0
-# phaseB=np.pi
-# screenDivider = 0.5
-# phaseIn=np.zeros((dataHeight,dataWidth))
-# screenElement=np.int32(np.floor(dataHeight*screenDivider))
-# phaseIn[0:screenElement, :]=phaseA
-# phaseIn[screenElement+1:dataHeight,:]=phaseB
-# plt.imshow(phaseIn)
-
-# #checkerboard (define square single field size (px) of checkerboard with respect to slm width, checkerboard centered in the slm screen )
-# mask_type = "input_mask_checkboard_1"
-# nsingleV=1 ##number of fields single type, vertical direction
-# nsingleH=2 ##number of fields single type, horizontal direction
-# # n=nsingleV*2 #number of fields both type
-# # npixelsingle=np.int16(np.floor(dataHeight/n))
-# n=nsingleH*2 #number of fields both type
-# npixelsingle=np.int16(np.floor(dataWidth/n))
-# Mceckerboard=np.kron([[1, 0] * nsingleH, [0, 1] * nsingleH] * nsingleV, np.ones((npixelsingle, npixelsingle)))
-# phaseA=0
-# phaseB=np.pi
-# phaseIn_0=np.zeros((dataHeight,dataWidth))
-# phaseIn= a_incenter_b(phaseB*Mceckerboard,phaseIn_0)
-# plt.imshow(phaseIn)
-
-# ######################
 # %% CAMERA ACQUISITIONS OVER A SERIES OF UNIFORM PHASE SHIFTS
 # ######################
 # phase shifts
 Nshifts = 9
-phaseshift = np.linspace(0, 2 * np.pi, num=Nshifts)
+phase_shift = np.linspace(0, 2 * np.pi, num=Nshifts)
 
 # Camera data
-frameWidth = 1920
-frameHeight = 1200
-Mframes = np.zeros((frameHeight, frameWidth, Nshifts), dtype=np.uint8)
-Mframes_reference = np.zeros((frameHeight, frameWidth, Nshifts), dtype=np.uint8)
+camera_frame_width = 1920
+camera_frame_height = 1200
+Mframes = np.zeros((camera_frame_height, camera_frame_width, Nshifts), dtype=np.uint8)
+Mframes_reference = np.zeros((camera_frame_height, camera_frame_width, Nshifts), dtype=np.uint8)
 
-for i in range(Nshifts):
-    print("Phase shift:", f"{phaseshift[i]:.4f}")
-
-    # Code for the reference
-    print("  Taking shot for reference")
-    phaseData = slmdisplaysdk.createFieldSingle(dataWidth, dataHeight) + phaseIn_reference + phaseshift[i]
-    error = slm.showPhasevalues(phaseData)  # display phase values on the SLM
-    assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
-    result_reference = camera.GrabOne(100)  # grab frame file on the camera
-    Mframes_reference[:, :, i] = result_reference.Array  # extract numerical matrix and build 3D frame matrix
-
-    # Code for the phaseIn selected
-    print("  Taking shot for", mask_type)
-    phaseData = slmdisplaysdk.createFieldSingle(dataWidth, dataHeight) + phaseIn + phaseshift[i]
-    error = slm.showPhasevalues(phaseData)  # display phase values on the SLM
-    assert error == slmdisplaysdk.ErrorCode.NoError, slm.errorString(error)
-    result = camera.GrabOne(100)  # grab frame file on the camera
-    Mframes[:, :, i] = result.Array  # extract numerical matrix and build 3D frame matrix
+# Call the functions to compute phase_in
+# Main loop for the mask names
+for mask in [blank_screen, vertical_division, horizontal_division]:
+    print("\nStarting measures for", mask)
+    # 1 - Set the mask
+    (mask_type, phase_in) = mask(slm_data_height, slm_data_width)
+    # 2 - Take the shots
+    (Mframes_reference, Mframes) = camera_shots(mask_type, phase_shift, Nshifts,
+                                                slm_data_width, slm_data_height,
+                                                phase_in_reference, phase_in, Mframes_reference, Mframes)
+    # 3 - Save the measures
+    save_measures(run_dir, mask_type, Mframes_reference, Mframes,
+                  phase_in_reference, phase_in, phase_shift, Nshifts)
 
 
-# %% CLOSE CAMERA AND SLM
-camera.Close()
-slm.close()
-
-
-# %% SHOWING AND SAVING IMAGES
-# Before saving, let's make the necessary folders
-# in order to remember the input mask this lines are at the bottom of the file
-today = datetime.now()
-data_day_dir = os.path.join(data_path, today.strftime('%Y_%m_%d'))
-data_measure_dir = os.path.join(data_day_dir, data_type_measure)
-mask_dir = os.path.join(data_measure_dir, mask_type)
-# Make folder for the day
-if not os.path.exists(data_day_dir):
-    print("Making folder for the day:", data_day_dir)
-    os.makedirs(data_day_dir)
-# Make folder for the type of measure
-if not os.path.exists(data_measure_dir):
-    print("Making folder for the type of measure:", data_measure_dir)
-    os.makedirs(data_measure_dir)
-# Make another for the input_mask
-if not os.path.exists(mask_dir):
-    print("Making folder for the input mask:", mask_dir)
-    os.makedirs(mask_dir)
-# Make folder for the run
-for ii in range(1, 9999):
-    data_dir = os.path.join(mask_dir + f"/M{ii:05d}")
-    if not os.path.exists(data_dir):
-        print("Making folder for the current run:", data_dir)
-        os.mkdir(data_dir)
-        break
-# Set the folders where you save images and np arrays
-image_save_dir = os.path.join(data_dir, "images")
-pfile_save_dir = os.path.join(data_dir, "files")
-# Make folders
-os.mkdir(image_save_dir)
-os.mkdir(pfile_save_dir)
-
-
-for i in range(Nshifts):
-    fig1, ax = plt.subplots()
-    img = ax.imshow(Mframes[:, :, i], 'viridis')
-    # plt.colorbar(img)
-    ax.axis('off')
-    #
-    imagename = 'frame' + np.str(i) + '.png'
-    file_path = os.path.join(image_save_dir, imagename)
-    print("Saving:", file_path)
-    plt.savefig(file_path)
-
-for i in range(Nshifts):
-    fig1, ax = plt.subplots()
-    img = ax.imshow(Mframes_reference[:, :, i], 'viridis')
-    # plt.colorbar(img)
-    ax.axis('off')
-    #
-    imagename = 'frame' + np.str(i) + '_reference.png'
-    file_path = os.path.join(image_save_dir, imagename)
-    print("Saving:", file_path)
-    plt.savefig(file_path)
-
-# %% SAVIG FILES
-# save frames matrix
-file_path = os.path.join(pfile_save_dir, 'frames.npy')
-print("Saving:", file_path)
-np.save(file_path, Mframes)
-file_path = os.path.join(pfile_save_dir, 'frames_reference.npy')
-print("Saving:", file_path)
-np.save(file_path, Mframes_reference)
-
-# save input phase mask
-file_path = os.path.join(pfile_save_dir, 'phasein.npy')
-print("Saving:", file_path)
-np.save(file_path, phaseIn)
-file_path = os.path.join(pfile_save_dir, 'phasein_reference.npy')
-print("Saving:", file_path)
-np.save(file_path, phaseIn_reference)
-
-# save input phase shift
-file_path = os.path.join(pfile_save_dir, 'phaseshifts.npy')
-print("Saving:", file_path)
-np.save(file_path, phaseshift)
+# # %% CLOSE CAMERA AND SLM
+# camera.Close()
+# slm.close()
