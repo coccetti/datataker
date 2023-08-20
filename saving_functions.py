@@ -91,5 +91,22 @@ def save_measures(run_dir, mask_type, Mframes_reference, Mframes,
     print("Saving:", file_path)
     np.save(file_path, phase_shift)
 
+    # compute and save measured field and phase (4-step method)
+    # compute
+    selected_frames = [1, 3, 5, 7]  # frames selected from the 9 measures taken
+    phase_in_selected = phase_in[selected_frames]
+    Mframes_selected = Mframes[:,:,selected_frames]
+    Mframes_selected = Mframes_selected.astype(np.float32)
+    measured_field = (Mframes_selected[:,:,0] - Mframes_selected [:,:,2]) + 1j * \
+                     (Mframes_selected[:,:,1] - Mframes_selected [:,:,3])  # flipping 2nd and 4th interferogram
+    measured_phase = np.angle(measured_field)
+    # save
+    file_path = os.path.join(pfile_save_dir, 'measured_complex_field.npy')
+    print("Saving:", file_path)
+    np.save(file_path, measured_field)
+    file_path = os.path.join(pfile_save_dir, 'measured_phase.npy')
+    print("Saving:", file_path)
+    np.save(file_path, measured_phase)
+
     print("Done saving")
     return
