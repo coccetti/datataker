@@ -9,7 +9,8 @@ Created on Fri Nov 25 15:08:28 2022
 import numpy as np
 # import matplotlib.pyplot as plt
 # from datetime import datetime
-from phase_in_functions import blank_screen, vertical_division, horizontal_division
+from phase_in_functions import blank_screen, vertical_division, horizontal_division, \
+    checkerboard_1, checkerboard_2, checkerboard_3
 from camera_functions import camera_shots
 from saving_functions import make_run_folder, save_measures
 
@@ -118,7 +119,7 @@ Mframes_reference = np.zeros((camera_frame_height, camera_frame_width, Nshifts),
 
 # Call the functions to compute phase_in
 # Main loop for the mask names
-for mask in [blank_screen, vertical_division, horizontal_division]:
+for mask in [blank_screen, vertical_division, horizontal_division, checkerboard_1, checkerboard_2, checkerboard_3]:
     print("\nStarting measures for", mask)
     # 1 - Set the mask
     (mask_type, phase_in) = mask(slm_data_height, slm_data_width)

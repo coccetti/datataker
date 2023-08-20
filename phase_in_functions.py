@@ -49,11 +49,47 @@ def horizontal_division(slm_data_height, slm_data_width):
     return mask_type, phaseIn
 
 
-def checkerboard(slm_data_height, slm_data_width):
+def checkerboard_1(slm_data_height, slm_data_width):
     # checkerboard (define square single field size (px) of checkerboard with respect to slm width, checkerboard centered in the slm screen )
     mask_type = "input_mask_checkboard_1"
     nsingleV = 1  ##number of fields single type, vertical direction
     nsingleH = 2  ##number of fields single type, horizontal direction
+    # n=nsingleV*2 #number of fields both type
+    # npixelsingle=np.int16(np.floor(dataHeight/n))
+    n = nsingleH * 2  # number of fields both type
+    npixelsingle = np.int16(np.floor(slm_data_width / n))
+    Mceckerboard = np.kron([[1, 0] * nsingleH, [0, 1] * nsingleH] * nsingleV, np.ones((npixelsingle, npixelsingle)))
+    phaseA = 0
+    phaseB = np.pi
+    phaseIn_0 = np.zeros((slm_data_height, slm_data_width))
+    phaseIn = a_incenter_b(phaseB * Mceckerboard, phaseIn_0)
+    # plt.imshow(phaseIn)
+    return mask_type, phaseIn
+
+
+def checkerboard_2(slm_data_height, slm_data_width):
+    # checkerboard (define square single field size (px) of checkerboard with respect to slm width, checkerboard centered in the slm screen )
+    mask_type = "input_mask_checkboard_2"
+    nsingleV = 2  ##number of fields single type, vertical direction
+    nsingleH = 4  ##number of fields single type, horizontal direction
+    # n=nsingleV*2 #number of fields both type
+    # npixelsingle=np.int16(np.floor(dataHeight/n))
+    n = nsingleH * 2  # number of fields both type
+    npixelsingle = np.int16(np.floor(slm_data_width / n))
+    Mceckerboard = np.kron([[1, 0] * nsingleH, [0, 1] * nsingleH] * nsingleV, np.ones((npixelsingle, npixelsingle)))
+    phaseA = 0
+    phaseB = np.pi
+    phaseIn_0 = np.zeros((slm_data_height, slm_data_width))
+    phaseIn = a_incenter_b(phaseB * Mceckerboard, phaseIn_0)
+    # plt.imshow(phaseIn)
+    return mask_type, phaseIn
+
+
+def checkerboard_3(slm_data_height, slm_data_width):
+    # checkerboard (define square single field size (px) of checkerboard with respect to slm width, checkerboard centered in the slm screen )
+    mask_type = "input_mask_checkboard_3"
+    nsingleV = 3  ##number of fields single type, vertical direction
+    nsingleH = 6  ##number of fields single type, horizontal direction
     # n=nsingleV*2 #number of fields both type
     # npixelsingle=np.int16(np.floor(dataHeight/n))
     n = nsingleH * 2  # number of fields both type
