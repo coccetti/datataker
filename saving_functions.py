@@ -29,8 +29,8 @@ def make_run_folder(data_path, data_type_measure):
     return run_dir
 
 
-def save_measures(run_dir, mask_type, Mframes_reference, Mframes,
-                  phase_in_reference, phase_in, phase_shift, Nshifts):
+def save_images_and_files(run_dir, mask_type, Mframes,
+                  phase_in, phase_shift, Nshifts):
     # First the folder for the input_mask
     mask_dir = os.path.join(run_dir, mask_type)
     if not os.path.exists(mask_dir):
@@ -39,74 +39,57 @@ def save_measures(run_dir, mask_type, Mframes_reference, Mframes,
     data_dir = mask_dir
 
     # Set the folders where you save images and np arrays
-    image_save_dir = os.path.join(data_dir, "images")
+    # image_save_dir = os.path.join(data_dir, "images")
     pfile_save_dir = os.path.join(data_dir, "files")
     # Make folders
-    os.mkdir(image_save_dir)
+    # os.mkdir(image_save_dir)
     os.mkdir(pfile_save_dir)
 
-    for i in range(Nshifts):
-        fig1, ax = plt.subplots()
-        img = ax.imshow(Mframes[:, :, i], 'viridis')
-        # plt.colorbar(img)
-        ax.axis('off')
-        #
-        imagename = 'frame' + np.str(i) + '.png'
-        file_path = os.path.join(image_save_dir, imagename)
-        print("Saving:", file_path)
-        plt.savefig(file_path)
-        plt.close(fig1)
+    # for i in range(Nshifts):
+    #     fig1, ax = plt.subplots()
+    #     img = ax.imshow(Mframes[:, :, i], 'viridis')
+    #     # plt.colorbar(img)
+    #     ax.axis('off')
+    #     #
+    #     imagename = 'frame' + np.str(i) + '.png'
+    #     file_path = os.path.join(image_save_dir, imagename)
+    #     print("Saving:", file_path)
+    #     plt.savefig(file_path)
+    #     plt.close(fig1)
 
-    for i in range(Nshifts):
-        fig1, ax = plt.subplots()
-        img = ax.imshow(Mframes_reference[:, :, i], 'viridis')
-        # plt.colorbar(img)
-        ax.axis('off')
-        #
-        imagename = 'frame' + np.str(i) + '_reference.png'
-        file_path = os.path.join(image_save_dir, imagename)
-        print("Saving:", file_path)
-        plt.savefig(file_path)
-        plt.close(fig1)
+    # for i in range(Nshifts):
+    #     fig1, ax = plt.subplots()
+    #     img = ax.imshow(Mframes_reference[:, :, i], 'viridis')
+    #     # plt.colorbar(img)
+    #     ax.axis('off')
+    #     #
+    #     imagename = 'frame' + np.str(i) + '_reference.png'
+    #     file_path = os.path.join(image_save_dir, imagename)
+    #     print("Saving:", file_path)
+    #     plt.savefig(file_path)
+    #     plt.close(fig1)
 
-    # %% SAVIG FILES
+    # % SAVIG FILES
     # save frames matrix
     file_path = os.path.join(pfile_save_dir, 'frames.npy')
     print("Saving:", file_path)
     np.save(file_path, Mframes)
-    file_path = os.path.join(pfile_save_dir, 'frames_reference.npy')
-    print("Saving:", file_path)
-    np.save(file_path, Mframes_reference)
+    # file_path = os.path.join(pfile_save_dir, 'frames_reference.npy')
+    # print("Saving:", file_path)
+    # np.save(file_path, Mframes_reference)
 
     # save input phase mask
     file_path = os.path.join(pfile_save_dir, 'phasein.npy')
     print("Saving:", file_path)
     np.save(file_path, phase_in)
-    file_path = os.path.join(pfile_save_dir, 'phasein_reference.npy')
-    print("Saving:", file_path)
-    np.save(file_path, phase_in_reference)
+    # file_path = os.path.join(pfile_save_dir, 'phasein_reference.npy')
+    # print("Saving:", file_path)
+    # np.save(file_path, phase_in_reference)
 
     # save input phase shift
     file_path = os.path.join(pfile_save_dir, 'phaseshifts.npy')
     print("Saving:", file_path)
     np.save(file_path, phase_shift)
-
-    # compute and save measured field and phase (4-step method)
-    # compute
-    selected_frames = [1, 3, 5, 7]  # frames selected from the 9 measures taken
-    phase_in_selected = phase_in[selected_frames]
-    Mframes_selected = Mframes[:,:,selected_frames]
-    Mframes_selected = Mframes_selected.astype(np.float32)
-    measured_field = (Mframes_selected[:,:,0] - Mframes_selected [:,:,2]) + 1j * \
-                     (Mframes_selected[:,:,1] - Mframes_selected [:,:,3])  # flipping 2nd and 4th interferogram
-    measured_phase = np.angle(measured_field)
-    # save
-    file_path = os.path.join(pfile_save_dir, 'measured_complex_field.npy')
-    print("Saving:", file_path)
-    np.save(file_path, measured_field)
-    file_path = os.path.join(pfile_save_dir, 'measured_phase.npy')
-    print("Saving:", file_path)
-    np.save(file_path, measured_phase)
 
     print("Done saving")
     return

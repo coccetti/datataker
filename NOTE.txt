@@ -1,0 +1,6 @@
+16/04/24
+Code "Camerabasler_SLM_compensation_phasemask_phaseshifting_v2" improves version _v1 by considering more phase masks.
+Additional phase masks are defined in phase_in_functions_2
+For instance: vertical_division_B has phases inverted compared to  vertical_division_A
+Similarly: checkerboard_1B and checkerboard_1A. 
+Instead: checkerboard_1R has binary phases randomly distributed 
